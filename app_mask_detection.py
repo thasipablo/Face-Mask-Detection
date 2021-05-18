@@ -7,6 +7,7 @@ import imutils
 import time
 import cv2
 import os
+import requests
 
 def detect_and_predict_mask(frame, faceNet, maskNet):
     # dimensions du cadre
@@ -60,19 +61,30 @@ def detect_and_predict_mask(frame, faceNet, maskNet):
 
 
 # chargement du mask du model de detection des faces
-prototxtPath = 'face_detector/deploy.prototxt'
-weightsPath = 'face_detector/res10_300x300_ssd_iter_140000.caffemodel'
+prototxtPath = 'models/deploy.prototxt'
+weightsPath = 'models/res10_300x300_ssd_iter_140000.caffemodel'
 faceNet = cv2.dnn.readNet(prototxtPath, weightsPath)
 
 # chargement du model
-maskNet = load_model("mask_detector.model")
+maskNet = load_model('models/mask_detector.model')
 
 # initialiser la video streaming
 vs = VideoStream(src=0).start()
 
+# initialiser la video streaming du telephone
+url = 'http://192.168.1.118:8080/shot.jpg'
+
 while True:
-    frame = vs.read()
-    frame = imutils.resize(frame, width=500)
+    # de la comera du pc
+    # frame = vs.read()
+
+    # de la camera du telephone
+    frame_resp = requests.get(url)
+    frame_arr = np.array(bytearray(frame_resp.content), dtype=np.uint8)
+    frame = cv2.imdecode(frame_arr, -1)
+
+    # taille du frame
+    frame = imutils.resize(frame, width=800)
 
     # detecter le mask dans la frame video et dire
     # oui ou non il y a port du mask
@@ -86,7 +98,7 @@ while True:
 
         # determiner le classe
         label = "Mask" if mask > withoutMask else "Pas de Mask"
-        color = (255, 0, 0) if label == "Mask" else (0, 255, 0)
+        color = (0, 255, 0) if label == "Mask" else (0, 0, 255)
 
         # inclure la probabilite dans le label en pourcentage
         label = "{}: {:.2f}%".format(label, max(mask, withoutMask) * 100)
